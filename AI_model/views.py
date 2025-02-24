@@ -3,6 +3,7 @@ from .models import Conversation
 from openai import OpenAI
 from os import getenv
 from markdown import markdown
+# from django.http import StreamingHttpResponse
 
 
 class ChatBot:
@@ -31,20 +32,23 @@ class ChatBot:
         return full_answer
 
     def print_response(self, stream):
-        """实时输出回答"""
+        """处理流式输出"""
         full_answer = ""
+        chunk = ''
         try:
             for chunk in stream:
                 delta = chunk.choices[0].delta if chunk.choices else None
                 if not delta:
                     continue  # 跳过空 chunk
                 answer = getattr(delta, 'content', '') or ''
-                full_answer += answer
-                print(answer, end="", flush=True)  # 实时输出
+                if answer:
+                    full_answer += answer
         except Exception as e:
             print(f"\n发生错误: {str(e)}")
             full_answer += f"\n（处理中断：{str(e)}）"
         finally:
+            if chunk.usage:
+                print(chunk.usage)
             return full_answer
 
 

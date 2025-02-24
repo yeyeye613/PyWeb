@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <title>AI对话系统</title>
+    <!-- 引入代码高亮样式 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+</head>
+<body>
+{#    <div id="chat-history" style="height: 400px; overflow-y: auto; border: 1px solid #ccc; padding: 10px;">666</div>#}
+    <div class="chat-container">
+
+
+        {% for html_content in formatted_responses %}
+            <div class="ai-response">
+                <strong>AI：</strong>{{ html_content|safe }}  <!-- 关键：使用 safe 过滤器 -->
+            </div>
+        {% empty %}
+            <p>暂无对话记录。</p>
+        {% endfor %}
+
+        <form method="post">
+            {% csrf_token %}
+            <input type="text" name="message" placeholder="输入消息...">
+            <button type="submit">发送</button>
+        </form>
+    </div>
+</body>
+</html>

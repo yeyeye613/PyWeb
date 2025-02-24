@@ -1,0 +1,28 @@
+body {
+    margin: 0;
+    padding: 0;
+}
+.navbar {
+    display: flex;
+    justify-content: space-around; /* 使导航栏两端对齐 */
+    padding: 10px 0;    /* 给导航栏设置上下内边距 */
+    background-color: #333;   /* 设置导航栏背景色 */
+    position: absolute;      /* 设置导航栏相对定位 */
+    left: 0;                 /* 设置导航栏左边距 */
+    width: 100%;              /* 设置导航栏宽度 */
+    bottom: 0vh; /* 底部对齐 */
+
+}
+
+/* 为导航栏中的链接添加样式 */
+.navbar a {
+    text-decoration: none; /* 去除链接下划线 */
+    color: white; /* 设置链接文字颜色 */
+    font-size: 20px; /* 设置链接文字大小 */
+    font-weight: bold; /* 加粗 */
+}
+
+/* 鼠标悬停时链接的样式 */
+.navbar a:hover {
+    color: #007BFF; /* 鼠标悬停时链接文字颜色变为蓝色 */
+}

@@ -1,0 +1,23 @@
+body {
+    margin: 0;
+    padding: 0;
+}
+.navbar {
+    display: flex;
+    justify-content: space-around; /* 子元素在主轴上均匀分布 */
+    padding: 20px; /* 添加内边距，使内容与边框有一定间距 */
+    background-color: #333; /* 设置背景颜色 */
+}
+
+/* 为导航栏中的链接添加样式 */
+.navbar a {
+    text-decoration: none; /* 去除链接下划线 */
+    color: white; /* 设置链接文字颜色 */
+    font-size: 20px; /* 设置链接文字大小 */
+    font-weight: bold; /* 加粗 */
+}
+
+/* 鼠标悬停时链接的样式 */
+.navbar a:hover {
+    color: #007BFF; /* 鼠标悬停时链接文字颜色变为蓝色 */
+}

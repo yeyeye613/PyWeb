@@ -23,6 +23,5 @@ from learning_logs import views
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('learning_logs.urls'),),
-    path('ai', include('AI_model.urls'), )
-
+    path('', include('AI_model.urls'), )
 ]

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- 引入代码高亮样式 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Source Example</title>
+</head>
+<body>
+    <!-- 显示区域 -->
+    <div id="message-box"></div>
+    <label for="user_input"></label>
+    <textarea type="text" id="user_input" placeholder="输入你的问题"></textarea>
+    <button onclick="sendPrompt()">发送</button>
+{#    <div id="reasoning-box"></div>#}
+{#    <div id="answer-box"></div>#}
+{#    <div id="usage-box"></div>#}
+
+    <script>
+        function sendPrompt(){
+            const user_input = document.getElementById('user_input').value;
+            const eventSource = new EventSource(`stream_chat/?user_input=${encodeURIComponent(user_input)}`);
+            eventSource.onmessage = (e) => {
+                if (e.data === "event:done\ndata:\n\n") {
+                    eventSource.close();
+                    return;
+                }
+
+                document.getElementById('message-box').innerHTML += e.data;
+            };
+
+            eventSource.addEventListener("done", ()=>{
+                alert("对话结束")
+                eventSource.close();
+
+            })
+            eventSource.onerror = (error) => {
+                    console.error('EventSource failed:', error);
+                    eventSource.close();
+                };
+        }
+    </script>
+</body>
+</html>

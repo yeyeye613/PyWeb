@@ -1,30 +1,98 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
-    <title>AI对话系统</title>
-    <!-- 引入代码高亮样式 -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
-    <script>hljs.highlightAll();</script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chat</title>
+    <style>
+        .response-box {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin: 10px 0;
+            min-height: 50px;
+        }
+        #loading {
+            display: none;
+            color: #666;
+        }
+    </style>
 </head>
 <body>
-{#    <div id="chat-history" style="height: 400px; overflow-y: auto; border: 1px solid #ccc; padding: 10px;">666</div>#}
-    <div class="chat-container">
-
-
-        {% for html_content in formatted_responses %}
-            <div class="ai-response">
-                <strong>AI：</strong>{{ html_content|safe }}  <!-- 关键：使用 safe 过滤器 -->
-            </div>
-        {% empty %}
-            <p>暂无对话记录。</p>
-        {% endfor %}
-
-        <form method="post">
-            {% csrf_token %}
-            <input type="text" name="message" placeholder="输入消息...">
-            <button type="submit">发送</button>
-        </form>
+    <div id="chat-container">
+        <div id="reasoning-box" class="response-box"></div>
+        <div id="answer-box" class="response-box"></div>
+        <div id="usage-box" class="response-box"></div>
     </div>
+
+    <textarea id="user_input" placeholder="输入你的问题"></textarea>
+    <button onclick="sendPrompt()">发送</button>
+    <div id="loading">思考中...</div>
+
+    <script>
+        marked.setOptions({
+            sanitize: true,
+            breaks: true
+        });
+
+        let currentEventSource = null;
+
+        function sendPrompt() {
+            // 禁用按钮避免重复提交
+            const btn = document.querySelector('button');
+            btn.disabled = true;
+            // 打出loading
+            document.getElementById('loading').style.display = 'block';
+            // 清理旧数据
+            ['reasoning', 'answer', 'usage'].forEach(type => {
+                document.getElementById(`${type}-box`).innerHTML = '';
+            });
+
+            const userInput = document.getElementById('user_input').value;
+            user_input.value = ''; // 清空输入框
+
+            // 终止已有连接
+            if (currentEventSource) {
+                currentEventSource.close();
+            }
+
+            currentEventSource = new EventSource(`/stream_chat?${new URLSearchParams({
+                user_input: userInput
+            })}`);
+
+            const buffers = {
+                reasoning: '',
+                answer: '',
+                usage: ''
+            };
+
+            currentEventSource.onmessage = e => {
+                const data = JSON.parse(e.data);
+                buffers[data.type] += data.text;
+
+                // 防抖渲染
+                clearTimeout(this.renderTimer);
+                this.renderTimer = setTimeout(() => {
+                    document.getElementById(`${data.type}-box`).innerHTML =
+                        marked.parse(buffers[data.type]);
+                }, 100);
+            };
+
+            currentEventSource.addEventListener('done', () => {
+                currentEventSource.close();
+                btn.disabled = false;
+                document.getElementById('loading').style.display = 'none';
+            });
+
+            currentEventSource.onerror = (e) => {
+                console.error('Error:', e);
+                document.getElementById('answer-box').innerHTML =
+                    '⚠️ 连接异常，请重试';
+                btn.disabled = false;
+                document.getElementById('loading').style.display = 'none';
+                currentEventSource.close();
+            };
+        }
+    </script>
 </body>
 </html>

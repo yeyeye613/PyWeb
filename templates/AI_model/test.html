@@ -1,47 +1,129 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <!-- 引入代码高亮样式 -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
-    <script>hljs.highlightAll();</script>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Event Source Example</title>
-</head>
-<body>
-    <!-- 显示区域 -->
-    <div id="message-box"></div>
-    <label for="user_input"></label>
-    <textarea type="text" id="user_input" placeholder="输入你的问题"></textarea>
-    <button onclick="sendPrompt()">发送</button>
-{#    <div id="reasoning-box"></div>#}
-{#    <div id="answer-box"></div>#}
-{#    <div id="usage-box"></div>#}
+    <script src="{% static 'AI_model/highlight.min.js' %}"></script>
+    <script src="{% static 'AI_model/marked.min.js' %}"></script>
+    <link rel="stylesheet" href="{% static 'AI_model/default.min.css' %}">
+    <script type="module">
+        // 使用相对路径引入本地的 marked 库
+        window.sendPrompt = sendPrompt;
+        marked.setOptions({
+            breaks: true,
+            highlight: function(code, lang) {
+                return hljs.highlightAuto(code).value;
+            },
+            langPrefix: 'hljs language-' // 必须添加的类名前缀
+        });
+        hljs.configure({
+            ignoreUnescapedHTML: true // 防止安全警告
+        });
 
-    <script>
-        function sendPrompt(){
-            const user_input = document.getElementById('user_input').value;
-            const eventSource = new EventSource(`stream_chat/?user_input=${encodeURIComponent(user_input)}`);
-            eventSource.onmessage = (e) => {
-                if (e.data === "event:done\ndata:\n\n") {
-                    eventSource.close();
-                    return;
-                }
+        let currentEventSource = null;
+        function sendPrompt() {
+            // 禁用按钮避免重复提交
+            const btn = document.querySelector('button');
+            btn.disabled = true;
+            // 提示
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('chat-container').style.display = 'block';
 
-                document.getElementById('message-box').innerHTML += e.data;
+            // 清理旧数据
+            ['reasoning', 'answer', 'usage'].forEach(type => {
+                document.getElementById(`${type}-box`).innerHTML = '';
+            });
+            // 终止已有连接
+            if (currentEventSource) {currentEventSource.close();}
+
+            const userInputBox = document.getElementById('user-input')
+            let userInput = userInputBox.value;
+            userInputBox.value = '';
+
+            currentEventSource = new EventSource(`/ai/stream_chat?${new URLSearchParams({
+                user_input: userInput
+            })}`);
+
+            // 缓冲区
+            const buffers = {
+                reasoning: '',
+                answer: '',
+                usage: ''
             };
 
-            eventSource.addEventListener("done", ()=>{
-                alert("对话结束")
-                eventSource.close();
 
-            })
-            eventSource.onerror = (error) => {
-                    console.error('EventSource failed:', error);
-                    eventSource.close();
-                };
+            let renderTimer; // 定义 renderTimer 变量
+
+            // 开始处理数据
+            currentEventSource.onmessage = (e) => {
+                const data = JSON.parse(e.data);
+                buffers[data.type] += data.text;
+
+                // 防抖渲染
+                clearTimeout(renderTimer);
+                renderTimer = setTimeout(() => {
+                    // 渲染Markdown
+                    const targetElement = document.getElementById(`${data.type}-box`);
+                    targetElement.innerHTML = marked.parse(buffers[data.type]);
+
+
+                    // 动态高亮
+                    targetElement.querySelectorAll('pre code').forEach(block => {
+                        hljs.highlightElement(block);
+                    });
+                }, 100);
+            };
+
+            // 结束收尾
+            currentEventSource.addEventListener('done', () => {
+                currentEventSource.close();
+                btn.disabled = false;
+                document.getElementById('loading').style.display = 'none';
+            });
+
+            // 错误处理
+            currentEventSource.onerror = (e) => {
+                console.error('Error:', e);
+                document.getElementById('answer-box').innerHTML =
+                    '⚠️ 连接异常，请重试';
+                btn.disabled = false;
+                document.getElementById('loading').style.display = 'none';
+                currentEventSource.close();
+            };
         }
+
+        document.getElementById('submit-button').addEventListener('click', sendPrompt);
+        document.getElementById('user-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendPrompt();
+        });
     </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chat</title>
+    <style>
+        #chat-container{
+            {#display: none;#}
+            border: 1px solid #666;
+            padding: 10px;
+            margin: 10px 0;
+            min-height: 50px;
+        }
+        #loading {
+            display: none;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="chat-container">
+        <div id="reasoning-box" class="response-box"></div>
+        <div id="answer-box" class="response-box"></div>
+        <div id="usage-box" class="response-box"></div>
+    </div>
+    <label for="user-input"></label>
+    <textarea id="user-input" placeholder="输入你的问题"></textarea>
+    <button id="submit-button" onclick="sendPrompt()">发送</button>
+    <div id="loading">思考中...</div>
+
 </body>
 </html>

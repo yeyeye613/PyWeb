@@ -1,7 +1,8 @@
 from os import getenv
+# from django.contrib.auth.decorators import login_required
 from openai import OpenAI
 from django.http import StreamingHttpResponse
-# from .models import Conversation
+from .models import Conversation
 from django.shortcuts import render
 from logging import getLogger
 from json import dumps
@@ -33,7 +34,7 @@ def stream_chat(request):
             )
             # stream = True，该方法会返回一个生成器对象（generator）在异步函数调用会返回异步生成器
             # 返回的是一个ChatCompletion对象。包含了模型生成的回复以及其他相关信息，你可以通过访问该对象的属性来获取具体内容。
-
+            total_answer = ""
             for chunk in chunks:
                 delta = chunk.choices[0].delta if chunk.choices else None
                 # logger.info(f'Received chunk: {chunk}')
@@ -41,19 +42,25 @@ def stream_chat(request):
                     ai_reasoning = getattr(delta, "reasoning_content", "") or ""
                     ai_answer = getattr(delta, "content", "") or ""
                     if ai_reasoning:
-                        # logger.info('Received ai_reasoning: %s', ai_reasoning)
+                        logger.info('Received ai_reasoning: %s', ai_reasoning)
                         yield f'data:{dumps({"text": ai_reasoning, "type": "reasoning"})}\n\n'
                     elif ai_answer:
-                        # logger.info('Received ai_answer: %s', ai_answer)
+                        logger.info('Received ai_answer: %s', ai_answer)
                         yield f'data:{dumps({"text": ai_answer, "type": "answer"})}\n\n'
+                        total_answer += ai_answer
                 else:
                     ai_usage = getattr(chunk, "usage", {})
-                    # logger.info('Received ai_usage: %s', ai_usage)
+                    logger.info('Received ai_usage: %s', ai_usage)
                     yield f'data:{dumps({"text": ai_usage, "type": "usage"})}\n\n'
+            # Conversation.objects.create(
+            #     user=request.user,
+            #     user_input=user_input,
+            #     ai_response=total_answer,
+            # )
             yield "event:done\ndata:\n\n"
         except Exception as e:
             error_data = dumps({"error": str(e)})
-            logger.error(f"Error in streaming chat: {e}")
+            logger.info(f"Error in streaming chat: {e}")
             yield f"event:error\ndata: {error_data}\n\n"
     if user_input == "close()":
         return StreamingHttpResponse("event:close\ndata:\n\n", content_type='text/event-stream')
@@ -61,5 +68,7 @@ def stream_chat(request):
         return StreamingHttpResponse(generator(), content_type='text/event-stream')
 
 
+# @login_required
 def test(request):
-    return render(request, "AI_model/test.html")
+    # history_conversations = Conversation.objects
+    return render(request, "AI_model/AIchat.html")

@@ -4,96 +4,104 @@
 <head>
     <script src="{% static 'AI_model/highlight.min.js' %}"></script>
     <script src="{% static 'AI_model/marked.min.js' %}"></script>
-    <link rel="stylesheet" href="{% static 'AI_model/default.min.css' %}">
     <script type="module">
-        // 使用相对路径引入本地的 marked 库
-        window.sendPrompt = sendPrompt;
-        marked.setOptions({
-            breaks: true,
-            highlight: function(code, lang) {
-                return hljs.highlightAuto(code).value;
-            },
-            langPrefix: 'hljs language-' // 必须添加的类名前缀
-        });
-        hljs.configure({
-            ignoreUnescapedHTML: true // 防止安全警告
-        });
+    // 引入库，配置库，marked，highlight，
 
-        let currentEventSource = null;
-        function sendPrompt() {
-            // 禁用按钮避免重复提交
+        window.sendPrompt = sendPrompt;
+        const markdownConfig = {
+            breaks: true,
+            highlight: code => hljs.highlightAuto(code).value,
+            langPrefix: 'hljs language-'
+        };
+        marked.setOptions(markdownConfig);
+        hljs.configure({ ignoreUnescapedHTML: true });
+
+        let currentController = null;
+        const messageHistory = [];
+
+        async function sendPrompt() {
             const btn = document.querySelector('button');
             btn.disabled = true;
-            // 提示
             document.getElementById('loading').style.display = 'block';
-            document.getElementById('chat-container').style.display = 'block';
 
-            // 清理旧数据
-            ['reasoning', 'answer', 'usage'].forEach(type => {
-                document.getElementById(`${type}-box`).innerHTML = '';
-            });
-            // 终止已有连接
-            if (currentEventSource) {currentEventSource.close();}
+            const userInput = document.getElementById('user-input').value.trim();
+            if (!userInput) return;
 
-            const userInputBox = document.getElementById('user-input')
-            let userInput = userInputBox.value;
-            userInputBox.value = '';
+            document.getElementById('user-input').value = '';
+            createMessageGroup(userInput);
 
-            currentEventSource = new EventSource(`/ai/stream_chat?${new URLSearchParams({
-                user_input: userInput
-            })}`);
+            currentController?.abort();
+            currentController = new AbortController();
 
-            // 缓冲区
-            const buffers = {
-                reasoning: '',
-                answer: '',
-                usage: ''
-            };
+            try {
+                const es = new EventSource(`/ai/stream_chat?user_input=${encodeURIComponent(userInput)}`, {
+                    signal: currentController.signal
+                });
 
+                const buffers = new Map([['reasoning', ''], ['answer', ''], ['usage', '']]);
+                const renderQueue = new Set();
 
-            let renderTimer; // 定义 renderTimer 变量
+                es.onmessage = e => {
+                    const { type, text } = JSON.parse(e.data);
+                    buffers.set(type, buffers.get(type) + text);
+                    renderQueue.add(type);
 
-            // 开始处理数据
-            currentEventSource.onmessage = (e) => {
-                const data = JSON.parse(e.data);
-                buffers[data.type] += data.text;
-
-                // 防抖渲染
-                clearTimeout(renderTimer);
-                renderTimer = setTimeout(() => {
-                    // 渲染Markdown
-                    const targetElement = document.getElementById(`${data.type}-box`);
-                    targetElement.innerHTML = marked.parse(buffers[data.type]);
-
-
-                    // 动态高亮
-                    targetElement.querySelectorAll('pre code').forEach(block => {
-                        hljs.highlightElement(block);
+                    requestAnimationFrame(() => {
+                        renderQueue.forEach(t => updateMessage(t, buffers.get(t)));
+                        renderQueue.clear();
                     });
-                }, 100);
-            };
+                };
 
-            // 结束收尾
-            currentEventSource.addEventListener('done', () => {
-                currentEventSource.close();
+                es.addEventListener('done', () => {
+                    messageHistory.push({ query: userInput, buffers });
+                    finalizeRender();
+                    es.close();
+                });
+
+            } catch (error) {
+                handleError(error);
+            } finally {
                 btn.disabled = false;
                 document.getElementById('loading').style.display = 'none';
-            });
-
-            // 错误处理
-            currentEventSource.onerror = (e) => {
-                console.error('Error:', e);
-                document.getElementById('answer-box').innerHTML =
-                    '⚠️ 连接异常，请重试';
-                btn.disabled = false;
-                document.getElementById('loading').style.display = 'none';
-                currentEventSource.close();
-            };
+            }
         }
 
-        document.getElementById('submit-button').addEventListener('click', sendPrompt);
-        document.getElementById('user-input').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') sendPrompt();
+        function createMessageGroup(input) {
+            const container = document.getElementById('chat-container');
+            container.insertAdjacentHTML('beforeend', `
+                <div class="message-group">
+                    <div class="user-query">${input}</div>
+                    <div id="reasoning-box" class="reasoning"></div>
+                    <div id="answer-box" class="answer"></div>
+                    <div id="usage-box" class="usage"></div>
+                </div>
+            `);
+        }
+
+        function updateMessage(type, content) {
+            const target = document.getElementById(`${type}-box`);
+            target.innerHTML = marked.parse(content);
+            target.querySelectorAll('pre code').forEach(hljs.highlightElement);
+            target.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function handleError(error) {
+            console.error('Error:', error);
+            document.getElementById('answer-box').innerHTML = `
+                <div class="error-alert">
+                    ⚠️ 请求失败：${error.message}
+                    <button onclick="sendPrompt()">重新尝试</button>
+                </div>
+            `;
+        }
+
+        // 事件绑定
+        document.querySelector('button').addEventListener('click', sendPrompt);
+        document.getElementById('user-input').addEventListener('keypress', e => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendPrompt();
+            }
         });
     </script>
     <meta charset="UTF-8">
@@ -114,16 +122,6 @@
     </style>
 </head>
 <body>
-
-    <div id="chat-container">
-        <div id="reasoning-box" class="response-box"></div>
-        <div id="answer-box" class="response-box"></div>
-        <div id="usage-box" class="response-box"></div>
-    </div>
-    <label for="user-input"></label>
-    <textarea id="user-input" placeholder="输入你的问题"></textarea>
-    <button id="submit-button" onclick="sendPrompt()">发送</button>
-    <div id="loading">思考中...</div>
-
+    <textarea id="user-input"></textarea>
 </body>
 </html>

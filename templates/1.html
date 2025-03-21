@@ -1,10 +1,83 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
+    <meta charset="UTF-8">
+    <title>html语义化</title>
+    <style>
+        /* 优化后的 CSS */
+        body {
+            margin: 0;
+            min-height: 100vh; /* 确保 body 撑满视口 */
+            display: flex;
+        }
+
+        /* 侧边栏 */
+        .navbar {
+            display: flex;
+            flex-direction: column; /* 侧边栏纵向排列 */
+            padding: 1rem;
+            background: #f5f5f5;
+        }
+
+        /* 主内容区 */
+        .main {
+            flex: 1;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem; /* 子元素间距 */
+        }
+
+        /* 标题区 */
+        header {
+            text-align: center;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 1rem;
+        }
+
+        .meta {
+            display: flex;
+            justify-content: center;
+            gap: 2rem; /* 替代 space-evenly */
+            color: #666;
+        }
+
+        /* 文章主体 */
+        article {
+            max-width: 800px;
+            margin: 0 auto; /* 水平居中 */
+            line-height: 1.6;
+        }
+    </style>
 </head>
 <body>
-$END$
+    <aside class="navbar" aria-label="历史笔记">
+        <nav class="nav-content">
+            <h2>往昔残卷</h2>
+            <ul>
+                <li><a href="#">time</a></li>
+                <li><a href="#">time</a></li>
+                <li><a href="#">time</a></li>
+            </ul>
+        </nav>
+    </aside>
+
+    <main class="main">
+        <header>
+            <h1 class="title">临时笔记</h1>
+            <div class="meta">
+                <address><a href="http://localhost">作者</a></address>
+                <time datetime="2023-10-01T14:30">现在时间</time>
+            </div>
+        </header>
+        <article>
+            <h2>MATLAB</h2> <!-- 改用 h2 -->
+            <p>MATLAB一大特点为<strong>面向复数</strong>设计的运算</p>
+            <p>百分号开头为注释行<br> <!-- 换行用 br -->
+            1. 复数表示 z2=1+2i or z2=1+2*i<br>
+            z3=2*exp(i*pi/6) 取实部 real_z=real(z)</p>
+        </article>
+        <button onclick="ChangeSidebar" id="ChangeButton">-></button>
+    </main>
 </body>
 </html>

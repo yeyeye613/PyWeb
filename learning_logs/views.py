@@ -19,6 +19,7 @@ def about(request):
 def contact(request):
     return render(request, 'learning_logs/contact.html')
 
+
 def topics(request):
     """显示所有主题"""
     topics = Topic.objects.order_by()
@@ -33,6 +34,7 @@ def topic(request, topic_id):
     entries = topic.entry_set.order_by('-date_added')
     context = {'topic': topic, 'entries': entries}
     return render(request, 'learning_logs/topic.html', context)
+
 
 def new_topic(request):
     if request.method != 'POST':

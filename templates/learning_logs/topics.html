@@ -1,14 +1,19 @@
 {%extends 'learning_logs/base.html' %}
 {%block content%}
-<h1>Topics</h1>
-<ul>
-    {%for topic in topics%}
-        <li>
-            <a href="{% url 'learning_logs:topic' topic.id %}">{{ topic }}</a>
-        </li>
-        {% empty %}
-        <li>No topics are available.</li>
-    {%endfor%}
-</ul>
-    <p><a href="{% url 'learning_logs:new_topic' %}">Add a new topic</a></p>
+<div class="card shadow"> <!-- 卡片式容器 -->
+    <div class="card-body">
+        <h2 class="card-title mb-4">📖 我的读书笔记</h2>
+        <ul>
+            {%for topic in topics%}
+                <li>
+                    <a href="{% url 'learning_logs:topic' topic.id %}">{{ topic }}</a>
+                </li>
+                {% empty %}
+                <li>No topics are available.</li>
+            {%endfor%}
+        </ul>
+    </div>
+{#这里需要加管理#}
+    <p><a href="{% url 'learning_logs:new_topic' %}">添加新的主题</a></p>
+</div>
 {%endblock content%}

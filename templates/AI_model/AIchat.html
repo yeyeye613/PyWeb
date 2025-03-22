@@ -86,6 +86,7 @@
             ['reasoning', 'answer'].forEach(type => {
                 document.getElementById(`${type}-box`).innerHTML = '';
             });
+
             // 终止已有连接
             if (currentEventSource) {currentEventSource.close();}
 

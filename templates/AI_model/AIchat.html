@@ -83,7 +83,7 @@
             document.getElementById('chat-container').style.display = 'block';
 
             // 清理旧数据
-            ['reasoning', 'answer', 'usage'].forEach(type => {
+            ['reasoning', 'answer'].forEach(type => {
                 document.getElementById(`${type}-box`).innerHTML = '';
             });
             // 终止已有连接
